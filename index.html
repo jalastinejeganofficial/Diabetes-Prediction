@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetes Prediction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #form-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            margin: 0 auto;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #clear-btn {
+            background-color: #dc3545;
+            margin-top: 10px;
+        }
+
+        #clear-btn:hover {
+            background-color: #c82333;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        #result-info {
+            margin-top: 20px;
+            font-size: 16px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        #result-info ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 600px) {
+            #form-container {
+                width: 100%;
+                padding: 15px;
+            }
+
+            input, button {
+                font-size: 14px;
+            }
+
+            #result {
+                font-size: 16px;
+            }
+
+            #result-info {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Diabetes Prediction</h1>
+
+    <div id="form-container">
+        <label for="glucose">Glucose Level:</label>
+        <input type="number" id="glucose" placeholder="Enter glucose level">
+
+        <label for="bmi">BMI:</label>
+        <input type="number" id="bmi" placeholder="Enter BMI">
+
+        <label for="age">Age:</label>
+        <input type="number" id="age" placeholder="Enter age">
+
+        <label for="bloodPressure">Blood Pressure:</label>
+        <input type="number" id="bloodPressure" placeholder="Enter Blood Pressure">
+
+        <button id="predict-btn">Predict</button>
+        <button id="clear-btn">Clear</button>
+    </div>
+
+    <div id="result"></div>
+
+    <div id="result-info"></div>
+
+    <!-- Include TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+
+    <script>
+        // Dummy data for training the model
+        const diabetesData = [
+            { glucose: 148, bmi: 33.6, age: 50, bloodPressure: 72, outcome: 1 },
+            { glucose: 85, bmi: 26.6, age: 31, bloodPressure: 66, outcome: 0 },
+            { glucose: 183, bmi: 23.3, age: 32, bloodPressure: 64, outcome: 1 },
+            { glucose: 89, bmi: 28.1, age: 21, bloodPressure: 72, outcome: 0 },
+            { glucose: 137, bmi: 43.1, age: 35, bloodPressure: 89, outcome: 1 },
+            { glucose: 116, bmi: 25.6, age: 28, bloodPressure: 74, outcome: 0 },
+            { glucose: 123, bmi: 38.2, age: 41, bloodPressure: 80, outcome: 1 },
+            { glucose: 110, bmi: 31.1, age: 30, bloodPressure: 82, outcome: 0 },
+            { glucose: 159, bmi: 29.3, age: 40, bloodPressure: 86, outcome: 1 },
+            { glucose: 95, bmi: 27.6, age: 25, bloodPressure: 70, outcome: 0 },
+            { glucose: 142, bmi: 30.5, age: 36, bloodPressure: 75, outcome: 1 },
+            { glucose: 98, bmi: 23.4, age: 22, bloodPressure: 68, outcome: 0 },
+            { glucose: 170, bmi: 42.1, age: 55, bloodPressure: 90, outcome: 1 },
+            { glucose: 108, bmi: 24.3, age: 29, bloodPressure: 65, outcome: 0 },
+            { glucose: 140, bmi: 35.4, age: 49, bloodPressure: 76, outcome: 1 },
+            { glucose: 113, bmi: 28.9, age: 34, bloodPressure: 71, outcome: 0 },
+            { glucose: 172, bmi: 41.2, age: 44, bloodPressure: 85, outcome: 1 },
+            { glucose: 100, bmi: 22.7, age: 27, bloodPressure: 60, outcome: 0 },
+            { glucose: 156, bmi: 36.9, age: 46, bloodPressure: 88, outcome: 1 },
+            { glucose: 112, bmi: 29.7, age: 39, bloodPressure: 73, outcome: 0 }
+        ];
+
+        // Prepare data for training
+        const trainingData = diabetesData.map(item => [
+            item.glucose, item.bmi, item.age, item.bloodPressure
+        ]);
+        const outputData = diabetesData.map(item => item.outcome);
+
+        // Convert to TensorFlow.js tensors
+        const inputs = tf.tensor2d(trainingData);
+        const labels = tf.tensor2d(outputData, [outputData.length, 1]);
+
+        // Build and compile the model
+        const model = tf.sequential();
+        model.add(tf.layers.dense({
+            inputShape: [4], // Four input features
+            activation: 'relu',
+            units: 8,
+        }));
+        model.add(tf.layers.dense({
+            activation: 'sigmoid',
+            units: 1,
+        }));
+
+        model.compile({
+            loss: 'binaryCrossentropy',
+            optimizer: tf.train.adam(),
+            metrics: ['accuracy'],
+        });
+
+        // Train the model
+        async function trainModel() {
+            await model.fit(inputs, labels, {
+                epochs: 100,
+                shuffle: true,
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        console.log(`Epoch: ${epoch}, Loss: ${logs.loss}`);
+                    }
+                }
+            });
+        }
+
+        // Call trainModel() once the page loads
+        trainModel();
+
+        // Prediction logic when the button is clicked
+        document.getElementById('predict-btn').addEventListener('click', async () => {
+            const glucose = parseFloat(document.getElementById('glucose').value);
+            const bmi = parseFloat(document.getElementById('bmi').value);
+            const age = parseFloat(document.getElementById('age').value);
+            const bloodPressure = parseFloat(document.getElementById('bloodPressure').value);
+
+            const inputTensor = tf.tensor2d([[glucose, bmi, age, bloodPressure]]);
+
+            const prediction = model.predict(inputTensor);
+            const output = (await prediction.data())[0];  // Get the prediction result
+
+            const resultText = output > 0.5 
+                ? "High likelihood of diabetes" 
+                : "Low likelihood of diabetes";
+            document.getElementById('result').textContent = resultText;
+
+            // Display actionable tips based on prediction
+            const resultInfo = output > 0.5
+                ? `
+                    <h3>Recommendations for High Likelihood of Diabetes:</h3>
+                    <ul>
+                        <li>Consult with a healthcare provider.</li>
+                        <li>Monitor blood glucose levels regularly.</li>
+                        <li>Adopt a healthy diet low in refined sugars.</li>
+                        <li>Increase physical activity, aim for 30 minutes a day.</li>
+                        <li>Avoid smoking and excessive alcohol intake.</li>
+                    </ul>
+                `
+                : `
+                    <h3>Recommendations for Low Likelihood of Diabetes:</h3>
+                    <ul>
+                        <li>Maintain a healthy diet and weight.</li>
+                        <li>Continue regular exercise to stay fit.</li>
+                        <li>Monitor your glucose and blood pressure as a precaution.</li>
+                        <li>Avoid excessive intake of sugars and fats.</li>
+                        <li>Keep regular health checkups to stay updated.</li>
+                    </ul>
+                `;
+
+            document.getElementById('result-info').innerHTML = resultInfo;
+        });
+
+        // Clear the form fields and reset the result
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            document.getElementById('glucose').value = '';
+            document.getElementById('bmi').value = '';
+            document.getElementById('age').value = '';
+            document.getElementById('bloodPressure').value = '';
+            document.getElementById('result').textContent = '';
+            document.getElementById('result-info').innerHTML = '';
+        });
+    </script>
+
+</body>
+</html>
